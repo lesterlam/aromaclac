@@ -1,73 +1,58 @@
-# React + TypeScript + Vite
+# AromaCalc
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Essential oil recipe calculator with dilution tracking and safety alerts.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Base Oils**: Add and manage carrier oils with proportional parts
+- **Essential Oils**: Organize by categories with drag-and-drop reordering
+- **Safety Tracking**: Set max dilution percentages per oil with real-time safety alerts
+- **Recipe Library**: Save and organize recipes with titles and descriptions
+- **Autocomplete**: Smart suggestions from your oil library as you type
+- **Data Portability**: Export/import recipes and library data via JSON backup
+- **Dark Mode**: Automatic dark mode support based on system preferences
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Tech Stack
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- React 19 + TypeScript
+- Vite
+- Tailwind CSS
+- Dexie (IndexedDB)
+- dnd-kit (drag and drop)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Project Structure
+
 ```
+src/
+├── components/      # React components
+├── db/            # Database schema and migrations
+├── hooks/          # Custom React hooks
+├── lib/           # Export/import utilities
+├── logic/         # Business logic and calculations
+├── App.tsx        # Main application component
+└── main.tsx       # Entry point
+```
+
+## Commands
+
+```bash
+npm run dev      # Start development server
+npm run build    # Build for production
+npm run preview  # Preview production build
+npm test         # Run tests
+```
+
+## Data Storage
+
+All data is stored locally in the browser using IndexedDB:
+- Recipes with base oils, categories, and essential oils
+- Essential oil library with saved max dilution percentages
+- Base oil library
+- Last opened recipe preference
