@@ -1,6 +1,7 @@
 # AromaCalc
 
 Essential oil recipe calculator with dilution tracking and safety alerts.
+https://myaromaclac.netlify.app/
 
 ## Features
 
