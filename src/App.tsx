@@ -22,7 +22,7 @@ function newRecipe(): Recipe {
     categories: [
       {
         id: crypto.randomUUID(),
-        name: 'Mid-Tone',
+        name: 'Category',
         essentialOils: [],
       },
     ],
