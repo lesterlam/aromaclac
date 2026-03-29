@@ -8,19 +8,24 @@ export interface Oil {
   lastUsedMaxPercent: number | null
 }
 
+/**
+ * Base oil library: name is unique.
+ */
+export interface BaseOil {
+  name: string
+}
+
 export interface BaseOilRow {
   name: string
   ratio: number
-  isFixedVolume: boolean
-  volumeML: number
 }
 
 export interface EssentialOilLine {
   id: string
   name: string
   drops: number
-  /** Max allowed % of base volume (e.g. 1 = 1%). */
-  maxPercentLimit: number
+  /** Max allowed % of base volume (e.g. 1 = 1%), or null for no limit. */
+  maxPercentLimit: number | null
 }
 
 export interface RecipeCategory {
@@ -32,6 +37,9 @@ export interface RecipeCategory {
 export interface Recipe {
   id: string
   title: string
+  description: string
+  /** Target total volume in ml for the recipe base oils. */
+  targetVolumeML: number
   baseOils: BaseOilRow[]
   categories: RecipeCategory[]
 }
@@ -44,22 +52,18 @@ export function migrateRecipeV1ToV2(r: Record<string, unknown>): Recipe {
   const targetVol =
     typeof r.targetVolume === 'number' && !Number.isNaN(r.targetVolume)
       ? r.targetVolume
-      : 10
+      : 50
   const oldBases = (r.baseOils as { name?: string; ratio?: number }[]) ?? []
   const baseOils: BaseOilRow[] =
     oldBases.length > 0
-      ? oldBases.map((b, i) => ({
+      ? oldBases.map((b) => ({
           name: b.name ?? '',
           ratio: typeof b.ratio === 'number' ? b.ratio : 1,
-          isFixedVolume: i === 0,
-          volumeML: i === 0 ? targetVol : 0,
         }))
       : [
           {
             name: 'Jojoba',
             ratio: 1,
-            isFixedVolume: true,
-            volumeML: targetVol,
           },
         ]
 
@@ -69,12 +73,14 @@ export function migrateRecipeV1ToV2(r: Record<string, unknown>): Recipe {
     id: newLineId(),
     name: e.name ?? '',
     drops: typeof e.drops === 'number' ? e.drops : 0,
-    maxPercentLimit: 1,
+    maxPercentLimit: null,
   }))
 
   return {
     id: typeof r.id === 'string' ? r.id : crypto.randomUUID(),
-    title: typeof r.title === 'string' ? r.title : 'Untitled',
+    title: typeof r.title === 'string' ? r.title : 'New Recipe',
+    description: '',
+    targetVolumeML: targetVol,
     baseOils,
     categories: [
       {
@@ -88,6 +94,7 @@ export function migrateRecipeV1ToV2(r: Record<string, unknown>): Recipe {
 
 export class AromaCalcDB extends Dexie {
   oils!: Table<Oil, string>
+  baseOils!: Table<BaseOil, string>
   recipes!: Table<Recipe, string>
 
   constructor() {
@@ -126,6 +133,12 @@ export class AromaCalcDB extends Dexie {
           await recipesTbl.put(migrateRecipeV1ToV2(r))
         }
       })
+    this.version(3)
+      .stores({
+        oils: 'name',
+        baseOils: 'name',
+        recipes: 'id, title',
+      })
   }
 }
 
@@ -135,14 +148,20 @@ export const db = new AromaCalcDB()
 export function normalizeRecipeFromImport(raw: unknown): Recipe {
   const r = raw as Record<string, unknown>
   if (Array.isArray(r.categories) && Array.isArray(r.baseOils)) {
+    const targetVol =
+      typeof r.targetVolumeML === 'number' && r.targetVolumeML > 0
+        ? r.targetVolumeML
+        : typeof r.targetVolume === 'number' && r.targetVolume > 0
+          ? r.targetVolume
+          : 50
     const recipe: Recipe = {
       id: typeof r.id === 'string' ? r.id : crypto.randomUUID(),
-      title: typeof r.title === 'string' ? r.title : 'Untitled',
+      title: typeof r.title === 'string' ? r.title : 'New Recipe',
+      description: typeof r.description === 'string' ? r.description : '',
+      targetVolumeML: targetVol,
       baseOils: (r.baseOils as Recipe['baseOils']).map((b) => ({
         name: b.name ?? '',
         ratio: typeof b.ratio === 'number' ? b.ratio : 1,
-        isFixedVolume: Boolean(b.isFixedVolume),
-        volumeML: typeof b.volumeML === 'number' ? b.volumeML : 0,
       })),
       categories: (r.categories as Recipe['categories']).map((cat) => ({
         id: cat.id || crypto.randomUUID(),
@@ -152,7 +171,7 @@ export function normalizeRecipeFromImport(raw: unknown): Recipe {
           name: eo.name ?? '',
           drops: typeof eo.drops === 'number' ? eo.drops : 0,
           maxPercentLimit:
-            typeof eo.maxPercentLimit === 'number' ? eo.maxPercentLimit : 1,
+            typeof eo.maxPercentLimit === 'number' ? eo.maxPercentLimit : null,
         })),
       })),
     }
@@ -164,8 +183,6 @@ export function normalizeRecipeFromImport(raw: unknown): Recipe {
         {
           name: 'Jojoba',
           ratio: 1,
-          isFixedVolume: true,
-          volumeML: 50,
         },
       ]
     }
