@@ -6,7 +6,6 @@ import {
   flattenEssentialOils,
   getSafetyStatus,
   roundMlForDisplay,
-  totalBaseMlFromRows,
 } from '../logic/aroma'
 
 export interface BackupPayloadV2 {
@@ -128,8 +127,8 @@ export async function importBackupJson(
 }
 
 export function recipeToCsv(recipe: Recipe): string {
-  const baseRows = calculateBaseVolumes(recipe.baseOils ?? [])
-  const vbase = totalBaseMlFromRows(baseRows)
+  const baseRows = calculateBaseVolumes(recipe.baseOils ?? [], recipe.targetVolumeML)
+  const vbase = recipe.targetVolumeML
 
   const rows: {
     recipeName: string

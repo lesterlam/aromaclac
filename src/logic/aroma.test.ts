@@ -3,15 +3,14 @@ import {
   ML_PER_DROP,
   calculateBaseVolumes,
   getSafetyStatus,
-  totalBaseMlFromRows,
 } from './aroma'
 
 describe('calculateBaseVolumes', () => {
-  it('scales from fixed anchor (PRD example)', () => {
+  it('scales by proportional parts', () => {
     const rows = calculateBaseVolumes([
-      { name: 'Sesame', ratio: 1.2, isFixedVolume: false, volumeML: 0 },
-      { name: 'Jojoba', ratio: 1, isFixedVolume: true, volumeML: 50 },
-    ])
+      { name: 'Sesame', ratio: 1.2 },
+      { name: 'Jojoba', ratio: 1 },
+    ], 110)
     expect(rows.find((r) => r.name === 'Jojoba')?.calculatedML).toBeCloseTo(
       50,
       10,
@@ -20,7 +19,6 @@ describe('calculateBaseVolumes', () => {
       60,
       10,
     )
-    expect(totalBaseMlFromRows(rows)).toBeCloseTo(110, 10)
   })
 })
 

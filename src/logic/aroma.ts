@@ -12,25 +12,22 @@ export interface BaseOilCalculated extends BaseOilRow {
 }
 
 /**
- * Anchor: one base oil with fixed volume; others scale by ratio × mlPerPart.
- * PRD §4.1 + implementation snippet.
+ * Calculate base oil volumes based on total target volume and proportional ratios.
  */
-export function calculateBaseVolumes(baseOils: BaseOilRow[]): BaseOilCalculated[] {
-  const fixed = baseOils.find((b) => b.isFixedVolume)
-  if (!fixed) {
+export function calculateBaseVolumes(
+  baseOils: BaseOilRow[],
+  targetVolumeML: number,
+): BaseOilCalculated[] {
+  if (!baseOils.length) {
+    return []
+  }
+  const totalRatio = baseOils.reduce((sum, b) => sum + Math.max(0, b.ratio), 0)
+  if (totalRatio === 0) {
     return baseOils.map((b) => ({ ...b, calculatedML: 0 }))
   }
-  const ratio = fixed.ratio
-  if (!ratio || ratio === 0) {
-    return baseOils.map((b) => ({
-      ...b,
-      calculatedML: b.isFixedVolume ? fixed.volumeML : 0,
-    }))
-  }
-  const mlPerPart = fixed.volumeML / ratio
   return baseOils.map((b) => ({
     ...b,
-    calculatedML: b.ratio * mlPerPart,
+    calculatedML: (Math.max(0, b.ratio) / totalRatio) * targetVolumeML,
   }))
 }
 
@@ -112,6 +109,22 @@ export function dropsInCategory(
   const cat = recipe.categories?.find((c) => c.id === categoryId)
   if (!cat) return 0
   return cat.essentialOils.reduce((s, l) => s + Math.max(0, l.drops), 0)
+}
+
+export function oilMlInCategory(
+  recipe: Recipe,
+  categoryId: string,
+): number {
+  const cat = recipe.categories?.find((c) => c.id === categoryId)
+  if (!cat) return 0
+  return cat.essentialOils.reduce((s, eo) => s + Math.max(0, eo.drops) * ML_PER_DROP, 0)
+}
+
+export function totalOilMlInRecipe(recipe: Recipe): number {
+  return recipe.categories?.reduce(
+    (s, cat) => s + cat.essentialOils.reduce((s2, eo) => s2 + Math.max(0, eo.drops) * ML_PER_DROP, 0),
+    0,
+  ) ?? 0
 }
 
 /** UI / CSV: ml rounded to 2 decimal places. */
