@@ -394,13 +394,6 @@ export function RecipeWorkspace({
             </button>
           </span>
         </h3>
-        <button
-          type="button"
-          onClick={addCategory}
-          className="text-xs font-medium text-violet-600 hover:underline dark:text-violet-400"
-        >
-          + Category
-        </button>
       </div>
 
       <DndContext
@@ -438,6 +431,14 @@ export function RecipeWorkspace({
           })}
         </div>
       </DndContext>
+
+      <button
+        type="button"
+        onClick={addCategory}
+        className="mt-4 text-xs font-medium text-violet-600 hover:underline dark:text-violet-400"
+      >
+        + Category
+      </button>
     </section>
   )
 }
@@ -509,13 +510,16 @@ function SortableCategory({
             Remove
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => onAddEo(category.id)}
-          className="text-xs text-violet-600 hover:underline dark:text-violet-400"
-        >
-          + Oil
-        </button>
+        {category.essentialOils.length === 0 && canRemove && (
+          <button
+            type="button"
+            onClick={() => onRemove(category.id)}
+            className="ml-auto text-xs text-zinc-400 hover:text-red-600 dark:hover:text-red-400"
+            aria-label="Remove category"
+          >
+            Remove
+          </button>
+        )}
       </div>
 
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
@@ -532,6 +536,14 @@ function SortableCategory({
           ))}
         </ul>
       </SortableContext>
+
+      <button
+        type="button"
+        onClick={() => onAddEo(category.id)}
+        className="mt-2 text-xs text-violet-600 hover:underline dark:text-violet-400"
+      >
+        + Oil
+      </button>
     </div>
   )
 }
