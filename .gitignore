@@ -39,3 +39,6 @@ coverage/
 
 # Misc
 *.tsbuildinfo
+
+# Design specs (private)
+aromacalc-spec.md
