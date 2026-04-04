@@ -3,8 +3,8 @@ import { useRegisterSW } from 'virtual:pwa-register/react'
 import {
   exportBackupJson,
   importBackupJson,
-  recipeToCsv,
 } from '../lib/export'
+import { recipeToCsv } from '../lib/csvExport'
 import type { Recipe } from '../db/schema'
 
 interface SettingsPanelProps {
