@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { LibraryColumn } from './components/LibraryColumn'
 import { RecipeWorkspace } from './components/RecipeWorkspace'
+import { ReloadPrompt } from './components/ReloadPrompt'
 import { SettingsPanel } from './components/SettingsPanel'
 import type { BaseOil, Oil, Recipe } from './db/schema'
 import { db } from './db/schema'
@@ -314,6 +315,8 @@ export default function App() {
           baseOilLibrary={baseOils}
         />
       </main>
+
+      <ReloadPrompt />
     </div>
   )
 }
