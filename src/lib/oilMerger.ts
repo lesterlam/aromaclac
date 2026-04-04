@@ -1,10 +1,16 @@
 import type { Oil } from '../db/schema'
+import { MAX_NAME_LENGTH } from './validation'
 
 /**
- * Normalize an oil name by trimming whitespace.
+ * Normalize an oil name by trimming whitespace and enforcing length limits.
  */
 function normalizeName(name: string): string {
-  return name.trim()
+  const trimmed = name.trim()
+  // Enforce maximum length
+  if (trimmed.length > MAX_NAME_LENGTH) {
+    return trimmed.slice(0, MAX_NAME_LENGTH)
+  }
+  return trimmed
 }
 
 /**
@@ -23,6 +29,7 @@ export function mergeOils(a: Oil, b: Oil): Oil {
 
 /**
  * Extract oils from recipes' essential oil lines.
+ * Only includes oils with valid, non-empty names.
  */
 export function extractOilsFromRecipes(recipes: import('../db/schema').Recipe[]): Oil[] {
   const byName = new Map<string, Oil>()
@@ -30,10 +37,12 @@ export function extractOilsFromRecipes(recipes: import('../db/schema').Recipe[])
     for (const cat of recipe.categories ?? []) {
       for (const line of cat.essentialOils ?? []) {
         const name = normalizeName(line.name)
+        // Skip empty names
         if (!name) continue
+        
         const oil: Oil = {
           name,
-          lastUsedMaxPercent: line.maxPercentLimit,
+          lastUsedMaxPercent: line.maxPercentLimit ?? null,
         }
         const k = name.toLowerCase()
         const prev = byName.get(k)
@@ -46,6 +55,7 @@ export function extractOilsFromRecipes(recipes: import('../db/schema').Recipe[])
 
 /**
  * Convert raw oil data to Oil type, handling legacy format.
+ * Returns null for invalid entries (empty names, etc.)
  */
 interface RawOil {
   name?: string
@@ -54,23 +64,42 @@ interface RawOil {
 }
 
 export function normalizeOil(raw: RawOil): Oil | null {
+  // Handle null/undefined raw input
+  if (!raw) return null
+  
   const name = normalizeName(String(raw.name ?? ''))
+  // Skip empty names
   if (!name) return null
 
   // Handle V2 format
   if ('lastUsedMaxPercent' in raw) {
+    // Validate the percent value
+    const percent = raw.lastUsedMaxPercent
+    if (percent !== null && (typeof percent !== 'number' || Number.isNaN(percent))) {
+      return { name, lastUsedMaxPercent: null }
+    }
+    // Percent should be between 0 and 100
+    if (percent !== null && (percent < 0 || percent > 100)) {
+      return { name, lastUsedMaxPercent: null }
+    }
     return {
       name,
-      lastUsedMaxPercent: raw.lastUsedMaxPercent ?? null,
+      lastUsedMaxPercent: percent ?? null,
     }
   }
 
   // Handle legacy V1 format (maxPercent as decimal, e.g., 0.01 = 1%)
-  if (typeof raw.maxPercent === 'number') {
-    return {
-      name,
-      lastUsedMaxPercent: raw.maxPercent * 100,
+  if (typeof raw.maxPercent === 'number' && !Number.isNaN(raw.maxPercent)) {
+    // V1 stores as decimal (0.01 = 1%), convert to percentage
+    // Clamp to reasonable range
+    const converted = raw.maxPercent * 100
+    if (converted >= 0 && converted <= 100) {
+      return {
+        name,
+        lastUsedMaxPercent: converted,
+      }
     }
+    return { name, lastUsedMaxPercent: null }
   }
 
   return { name, lastUsedMaxPercent: null }
@@ -78,6 +107,7 @@ export function normalizeOil(raw: RawOil): Oil | null {
 
 /**
  * Merge existing oils with imported oils (from file and recipes).
+ * Applies validation and deduplication.
  */
 export function mergeAllOils(
   existing: Oil[],
@@ -86,12 +116,14 @@ export function mergeAllOils(
 ): Oil[] {
   const mergedByName = new Map<string, Oil>()
 
-  // Start with existing oils
+  // Start with existing oils (already validated)
   for (const o of existing) {
-    mergedByName.set(o.name.toLowerCase(), o)
+    if (o.name) {
+      mergedByName.set(o.name.toLowerCase(), o)
+    }
   }
 
-  // Merge file oils
+  // Merge file oils (with validation)
   for (const raw of fileOils) {
     const oil = normalizeOil(raw)
     if (!oil) continue
@@ -100,8 +132,9 @@ export function mergeAllOils(
     mergedByName.set(k, prev ? mergeOils(prev, oil) : oil)
   }
 
-  // Merge recipe oils
+  // Merge recipe oils (already validated)
   for (const o of recipeOils) {
+    if (!o.name) continue
     const k = o.name.toLowerCase()
     const prev = mergedByName.get(k)
     mergedByName.set(k, prev ? mergeOils(prev, o) : o)
