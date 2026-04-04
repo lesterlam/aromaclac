@@ -1,4 +1,5 @@
-import { useRef } from 'react'
+import { useRef, useEffect, useState } from 'react'
+import { useRegisterSW } from 'virtual:pwa-register/react'
 import {
   exportBackupJson,
   importBackupJson,
@@ -151,8 +152,67 @@ export function SettingsPanel({
               AromaCalc v1.0 — Essential oil recipe calculator.
             </p>
           </div>
+
+          <OfflineIndicator />
         </section>
       </div>
+    </div>
+  )
+}
+
+function OfflineIndicator() {
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
+  const {
+    offlineReady: [offlineReady],
+  } = useRegisterSW({
+    onOfflineReady() {
+      console.log('[SW] App ready to work offline')
+    },
+  })
+
+  useEffect(() => {
+    function handleOnline() {
+      setIsOnline(true)
+    }
+    function handleOffline() {
+      setIsOnline(false)
+    }
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
+  return (
+    <div className="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+      <h3 className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+        PWA Status
+      </h3>
+      <div className="flex items-center gap-2">
+        <span
+          className={`inline-block h-2 w-2 rounded-full ${
+            offlineReady
+              ? 'bg-emerald-500 shadow-[0_0_6px_var(--tw-shadow-color)] shadow-emerald-500/50'
+              : isOnline
+                ? 'bg-amber-500'
+                : 'bg-red-500'
+          }`}
+        />
+        <span className="text-xs text-zinc-500">
+          {offlineReady
+            ? 'Ready for offline use'
+            : isOnline
+              ? 'Caching app for offline use...'
+              : 'Offline (data saved locally)'}
+        </span>
+      </div>
+      {!isOnline && (
+        <p className="mt-1 text-xs text-zinc-400">
+          Your recipes are stored locally and will sync when back online.
+        </p>
+      )}
     </div>
   )
 }
