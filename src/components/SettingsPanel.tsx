@@ -202,7 +202,7 @@ export function SettingsPanel({
                 About
               </h3>
               <p className="text-xs text-zinc-500">
-                AromaCalc v1.0 — Essential oil recipe calculator.
+                AromaCalc v1.1 — Essential oil recipe calculator.
               </p>
             </div>
 
