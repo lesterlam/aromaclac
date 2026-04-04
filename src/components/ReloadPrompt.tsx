@@ -8,14 +8,9 @@ const styles = {
   },
 }
 
-// Helper to reload the page
-const reloadSW = () => {
-  window.location.reload()
-}
-
 export function ReloadPrompt() {
   const {
-    needRefresh: [needRefresh, setNeedRefresh],
+    needRefresh: [needRefresh],
     offlineReady: [offlineReady, setOfflineReady],
     updateServiceWorker,
   } = useRegisterSW({
