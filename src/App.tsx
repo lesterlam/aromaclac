@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { LibraryColumn } from './components/LibraryColumn'
 import { RecipeWorkspace } from './components/RecipeWorkspace'
 import { ReloadPrompt } from './components/ReloadPrompt'
@@ -168,22 +169,26 @@ export default function App() {
       )}
 
       <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-3 p-3 lg:grid lg:min-h-0 lg:grid-cols-[minmax(200px,260px)_1fr] lg:gap-4">
-        <LibraryColumn
-          essentialOils={oils}
-          baseOils={baseOils}
-          filter={libraryFilter}
-          onFilterChange={setLibraryFilter}
-          onAddOilToRecipe={addOilFromLibrary}
-          onAddBaseOilToRecipe={addBaseOilFromLibrary}
-          onRemoveOil={removeOilFromLibrary}
-          onRemoveBaseOil={removeBaseOilFromLibrary}
-        />
-        <RecipeWorkspace
-          recipe={recipe}
-          onRecipeChange={setRecipe}
-          essentialOilLibrary={oils}
-          baseOilLibrary={baseOils}
-        />
+        <ErrorBoundary>
+          <LibraryColumn
+            essentialOils={oils}
+            baseOils={baseOils}
+            filter={libraryFilter}
+            onFilterChange={setLibraryFilter}
+            onAddOilToRecipe={addOilFromLibrary}
+            onAddBaseOilToRecipe={addBaseOilFromLibrary}
+            onRemoveOil={removeOilFromLibrary}
+            onRemoveBaseOil={removeBaseOilFromLibrary}
+          />
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <RecipeWorkspace
+            recipe={recipe}
+            onRecipeChange={setRecipe}
+            essentialOilLibrary={oils}
+            baseOilLibrary={baseOils}
+          />
+        </ErrorBoundary>
       </main>
 
       <ReloadPrompt />
