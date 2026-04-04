@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { LibraryColumn } from './components/LibraryColumn'
 import { RecipeWorkspace } from './components/RecipeWorkspace'
@@ -7,6 +7,7 @@ import { SettingsPanel } from './components/SettingsPanel'
 import type { BaseOil, Oil, Recipe } from './db/schema'
 import { db } from './db/schema'
 import { useAutoSave } from './hooks/useAutoSave'
+import { useRecipeNavigation } from './hooks/useRecipeNavigation'
 import {
   addBaseOilToRecipe,
   addOilToRecipe,
@@ -23,8 +24,6 @@ const EMPTY_OILS: Oil[] = []
 const EMPTY_BASE_OILS: BaseOil[] = []
 const EMPTY_RECIPES: Recipe[] = []
 
-const LAST_RECIPE_ID_KEY = 'aromacalc-last-recipe-id'
-
 export default function App() {
   const oilsLive = useLiveQuery(() => db.oils.orderBy('name').toArray(), [])
   const baseOilsLive = useLiveQuery(() => db.baseOils.orderBy('name').toArray(), [])
@@ -37,43 +36,12 @@ export default function App() {
   const [libraryFilter, setLibraryFilter] = useState('')
   const [toast, setToast] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
-  const hydratedFromDb = useRef(false)
 
-  // Load the last opened recipe when IndexedDB data is available
-  useEffect(() => {
-    // Only run once when recipes are loaded (recipesLive becomes non-null)
-    if (!recipesLive || hydratedFromDb.current) return
-    hydratedFromDb.current = true
-
-    const lastId = localStorage.getItem(LAST_RECIPE_ID_KEY)
-    if (lastId) {
-      const lastRecipe = recipesLive.find((r) => r.id === lastId)
-      if (lastRecipe) {
-        setRecipe({ ...lastRecipe })
-        return
-      }
-    }
-
-    // Fall back to first recipe
-    if (recipesLive.length > 0) {
-      setRecipe({ ...recipesLive[0] })
-    }
-  }, [recipesLive])
+  // Recipe navigation: hydration and last-opened tracking
+  const recipeInDb = useRecipeNavigation(recipesFromDb, recipe, setRecipe)
 
   // Auto-save recipe with debounce
   useAutoSave(recipe, persistRecipe)
-
-  const recipeInDb = useMemo(
-    () => recipesFromDb.some((r) => r.id === recipe.id),
-    [recipesFromDb, recipe.id],
-  )
-
-  // Save last opened recipe ID when recipe changes (if it's an existing recipe)
-  useEffect(() => {
-    if (recipeInDb) {
-      localStorage.setItem(LAST_RECIPE_ID_KEY, recipe.id)
-    }
-  }, [recipe.id, recipeInDb])
 
   const flushAndSelectRecipe = useCallback(
     async (id: string) => {
