@@ -8,24 +8,6 @@ import {
 import type { Recipe } from '../db/schema'
 
 describe('oilMerger', () => {
-  describe('normalizeName', () => {
-    // Helper for testing - not exported, but we test indirectly
-    it('should trim whitespace from names', () => {
-      const result = normalizeOil({ name: '  Lavender  ' })
-      expect(result?.name).toBe('Lavender')
-    })
-
-    it('should return null for empty names', () => {
-      const result = normalizeOil({ name: '' })
-      expect(result).toBeNull()
-    })
-
-    it('should return null for whitespace-only names', () => {
-      const result = normalizeOil({ name: '   ' })
-      expect(result).toBeNull()
-    })
-  })
-
   describe('normalizeOil', () => {
     it('should handle V2 format with lastUsedMaxPercent', () => {
       const result = normalizeOil({ name: 'Tea Tree', lastUsedMaxPercent: 5 })
@@ -55,6 +37,47 @@ describe('oilMerger', () => {
     it('should return null for empty name', () => {
       const result = normalizeOil({ name: '' })
       expect(result).toBeNull()
+    })
+
+    it('should return null for whitespace-only names', () => {
+      const result = normalizeOil({ name: '   ' })
+      expect(result).toBeNull()
+    })
+
+    it('should return null for null raw input', () => {
+      const result = normalizeOil(null as any)
+      expect(result).toBeNull()
+    })
+
+    it('should return null for undefined raw input', () => {
+      const result = normalizeOil(undefined as any)
+      expect(result).toBeNull()
+    })
+
+    it('should trim whitespace from names', () => {
+      const result = normalizeOil({ name: '  Lavender  ' })
+      expect(result?.name).toBe('Lavender')
+    })
+
+    it('should truncate names exceeding max length', () => {
+      const longName = 'A'.repeat(150)
+      const result = normalizeOil({ name: longName })
+      expect(result?.name.length).toBe(100)
+    })
+
+    it('should return null for invalid percent values', () => {
+      const result = normalizeOil({ name: 'Tea Tree', lastUsedMaxPercent: NaN as any })
+      expect(result).toEqual({ name: 'Tea Tree', lastUsedMaxPercent: null })
+    })
+
+    it('should return null for out-of-range percent values', () => {
+      const result = normalizeOil({ name: 'Tea Tree', lastUsedMaxPercent: 150 })
+      expect(result).toEqual({ name: 'Tea Tree', lastUsedMaxPercent: null })
+    })
+
+    it('should accept zero percent', () => {
+      const result = normalizeOil({ name: 'Tea Tree', lastUsedMaxPercent: 0 })
+      expect(result).toEqual({ name: 'Tea Tree', lastUsedMaxPercent: 0 })
     })
   })
 
