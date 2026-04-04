@@ -6,6 +6,7 @@ import { ReloadPrompt } from './components/ReloadPrompt'
 import { SettingsPanel } from './components/SettingsPanel'
 import type { BaseOil, Oil, Recipe } from './db/schema'
 import { db } from './db/schema'
+import { useAutoSave } from './hooks/useAutoSave'
 import {
   addBaseOilToRecipe,
   addOilToRecipe,
@@ -59,17 +60,8 @@ export default function App() {
     }
   }, [recipesLive])
 
-  const persistReady = useRef(false)
-  useEffect(() => {
-    if (!persistReady.current) {
-      persistReady.current = true
-      return
-    }
-    const t = window.setTimeout(() => {
-      void persistRecipe(recipe)
-    }, 400)
-    return () => window.clearTimeout(t)
-  }, [recipe])
+  // Auto-save recipe with debounce
+  useAutoSave(recipe, persistRecipe)
 
   const recipeInDb = useMemo(
     () => recipesFromDb.some((r) => r.id === recipe.id),
