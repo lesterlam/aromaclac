@@ -9,13 +9,19 @@ export function ReloadPrompt() {
     updateServiceWorker,
   } = useRegisterSW({
     onRegisteredSW(_swUrl: string, r: ServiceWorkerRegistration | undefined) {
-      console.log('[SW] Registered:', r)
+      if (import.meta.env.DEV) {
+        console.log('[SW] Registered:', r)
+      }
     },
     onRegisterError(error: Error) {
-      console.error('[SW] Registration error:', error)
+      if (import.meta.env.DEV) {
+        console.error('[SW] Registration error:', error)
+      }
     },
     onOfflineReady() {
-      console.log('[SW] App ready to work offline')
+      if (import.meta.env.DEV) {
+        console.log('[SW] App ready to work offline')
+      }
     },
   })
 
