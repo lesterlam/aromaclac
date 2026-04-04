@@ -6,56 +6,21 @@ import { ReloadPrompt } from './components/ReloadPrompt'
 import { SettingsPanel } from './components/SettingsPanel'
 import type { BaseOil, Oil, Recipe } from './db/schema'
 import { db } from './db/schema'
+import {
+  addBaseOilToRecipe,
+  addOilToRecipe,
+  createNewRecipe,
+  deleteAndSelectNext,
+  deleteBaseOil,
+  deleteOil,
+  flushAndCreateNew,
+  flushAndSwitchRecipe,
+  persistRecipe,
+} from './lib/recipeRepository'
 
 const EMPTY_OILS: Oil[] = []
 const EMPTY_BASE_OILS: BaseOil[] = []
 const EMPTY_RECIPES: Recipe[] = []
-
-function newRecipe(): Recipe {
-  return {
-    id: crypto.randomUUID(),
-    title: 'New Recipe',
-    description: '',
-    targetVolumeML: 50,
-    baseOils: [
-      { name: '', ratio: 1 },
-    ],
-    categories: [
-      {
-        id: crypto.randomUUID(),
-        name: 'Category',
-        essentialOils: [],
-      },
-    ],
-  }
-}
-
-async function syncOilsFromRecipe(recipe: Recipe): Promise<void> {
-  for (const cat of recipe.categories) {
-    for (const line of cat.essentialOils) {
-      const name = line.name.trim()
-      if (!name) continue
-      await db.oils.put({
-        name,
-        lastUsedMaxPercent: line.maxPercentLimit,
-      })
-    }
-  }
-}
-
-async function syncBaseOilsFromRecipe(recipe: Recipe): Promise<void> {
-  for (const base of recipe.baseOils) {
-    const name = base.name.trim()
-    if (!name) continue
-    await db.baseOils.put({ name })
-  }
-}
-
-async function persistRecipe(recipe: Recipe): Promise<void> {
-  await db.recipes.put(recipe)
-  await syncOilsFromRecipe(recipe)
-  await syncBaseOilsFromRecipe(recipe)
-}
 
 const LAST_RECIPE_ID_KEY = 'aromacalc-last-recipe-id'
 
@@ -67,7 +32,7 @@ export default function App() {
   const baseOils = baseOilsLive ?? EMPTY_BASE_OILS
   const recipesFromDb = recipesLive ?? EMPTY_RECIPES
 
-  const [recipe, setRecipe] = useState<Recipe>(newRecipe)
+  const [recipe, setRecipe] = useState<Recipe>(createNewRecipe())
   const [libraryFilter, setLibraryFilter] = useState('')
   const [toast, setToast] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
@@ -120,95 +85,40 @@ export default function App() {
 
   const flushAndSelectRecipe = useCallback(
     async (id: string) => {
-      await persistRecipe(recipe)
-      const found = await db.recipes.get(id)
+      const found = await flushAndSwitchRecipe(recipe, id)
       if (found) {
-        setRecipe({ ...found })
-        localStorage.setItem(LAST_RECIPE_ID_KEY, id)
+        setRecipe(found)
       }
     },
     [recipe],
   )
 
   const flushAndNewRecipe = useCallback(async () => {
-    await persistRecipe(recipe)
-    setRecipe(newRecipe())
-    localStorage.removeItem(LAST_RECIPE_ID_KEY)
+    setRecipe(await flushAndCreateNew(recipe))
   }, [recipe])
 
   const removeRecipe = useCallback(
     async (id: string) => {
-      await db.recipes.delete(id)
-      // Switch to another recipe or create a new one
-      const remaining = await db.recipes.orderBy('title').toArray()
-      if (remaining.length > 0) {
-        setRecipe({ ...remaining[0] })
-      } else {
-        setRecipe(newRecipe())
-      }
+      const next = await deleteAndSelectNext(id)
+      setRecipe(next)
     },
     [],
   )
 
   const removeOilFromLibrary = (name: string) => {
-    void db.oils.delete(name)
+    void deleteOil(name)
   }
 
   const removeBaseOilFromLibrary = (name: string) => {
-    void db.baseOils.delete(name)
+    void deleteBaseOil(name)
   }
 
   const addBaseOilFromLibrary = (oil: BaseOil) => {
-    setRecipe((r) => {
-      // If there's an empty base oil row, replace it
-      const emptyIndex = r.baseOils.findIndex((b) => b.name === '')
-      if (emptyIndex >= 0) {
-        return {
-          ...r,
-          baseOils: r.baseOils.map((b, i) =>
-            i === emptyIndex ? { name: oil.name, ratio: 1 } : b,
-          ),
-        }
-      }
-      // Otherwise, add a new row
-      return {
-        ...r,
-        baseOils: [
-          ...r.baseOils,
-          {
-            name: oil.name,
-            ratio: 1,
-          },
-        ],
-      }
-    })
+    setRecipe((r) => addBaseOilToRecipe(r, oil))
   }
 
   const addOilFromLibrary = (oil: Oil) => {
-    setRecipe((r) => {
-      const cats = [...r.categories]
-      if (cats.length === 0) {
-        cats.push({
-          id: crypto.randomUUID(),
-          name: 'Default',
-          essentialOils: [],
-        })
-      }
-      const first = cats[0]
-      cats[0] = {
-        ...first,
-        essentialOils: [
-          ...first.essentialOils,
-          {
-            id: crypto.randomUUID(),
-            name: oil.name,
-            drops: 1,
-            maxPercentLimit: oil.lastUsedMaxPercent,
-          },
-        ],
-      }
-      return { ...r, categories: cats }
-    })
+    setRecipe((r) => addOilToRecipe(r, oil))
   }
 
   return (
