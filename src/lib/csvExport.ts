@@ -6,6 +6,7 @@ import {
   getSafetyStatus,
   roundMlForDisplay,
 } from '../logic/aroma'
+import { sanitizeOilName } from './sanitize'
 
 /**
  * CSV row structure for recipe export.
@@ -24,12 +25,14 @@ interface CsvRow {
 export function buildBaseOilRows(recipe: Recipe): CsvRow[] {
   const baseRows = calculateBaseVolumes(recipe.baseOils ?? [], recipe.targetVolumeML)
   const vbase = recipe.targetVolumeML
+  // Sanitize recipe name for CSV
+  const safeRecipeName = sanitizeOilName(recipe.title)
 
   return baseRows.map((b) => {
     const ml = roundMlForDisplay(b.calculatedML)
     return {
-      recipeName: recipe.title,
-      ingredient: b.name || 'Base',
+      recipeName: safeRecipeName,
+      ingredient: sanitizeOilName(b.name || 'Base'),
       type: 'Base' as const,
       amount: `${ml.toFixed(2)} ml`,
       percentOfBase:
@@ -43,12 +46,14 @@ export function buildBaseOilRows(recipe: Recipe): CsvRow[] {
  */
 export function buildEssentialOilRows(recipe: Recipe): CsvRow[] {
   const vbase = recipe.targetVolumeML
+  // Sanitize recipe name for CSV
+  const safeRecipeName = sanitizeOilName(recipe.title)
 
   return flattenEssentialOils(recipe).map((line) => {
     const st = getSafetyStatus(line.drops, line.maxPercentLimit, vbase)
     return {
-      recipeName: recipe.title,
-      ingredient: line.name,
+      recipeName: safeRecipeName,
+      ingredient: sanitizeOilName(line.name),
       type: 'Essential' as const,
       amount: `${line.drops} drops`,
       percentOfBase: st.currentPercentDisplay,

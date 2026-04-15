@@ -7,6 +7,7 @@ import {
   importBackupJsonLegacy,
 } from '../lib/export'
 import { recipeToCsv } from '../lib/csvExport'
+import { sanitizeForFilename } from '../lib/sanitize'
 import { ImportConfirmDialog } from './ImportConfirmDialog'
 import type { Recipe } from '../db/schema'
 import type { Oil } from '../db/schema'
@@ -39,7 +40,7 @@ export function SettingsPanel({
       const blob = new Blob([json], { type: 'application/json' })
       const a = document.createElement('a')
       a.href = URL.createObjectURL(blob)
-      a.download = `aromacalc-backup-${new Date().toISOString().slice(0, 10)}.json`
+      a.download = `aromacalc-backup-${sanitizeForFilename(new Date().toISOString().slice(0, 10))}.json`
       a.click()
       URL.revokeObjectURL(a.href)
     } catch (e) {
@@ -108,7 +109,7 @@ export function SettingsPanel({
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
       const a = document.createElement('a')
       a.href = URL.createObjectURL(blob)
-      const safe = activeRecipe.title.replace(/[^\w-]+/g, '_') || 'recipe'
+      const safe = sanitizeForFilename(activeRecipe.title) || 'recipe'
       a.download = `${safe}-report.csv`
       a.click()
       URL.revokeObjectURL(a.href)

@@ -3,9 +3,12 @@ import { db, normalizeRecipeFromImport } from '../db/schema'
 import { mergeAllOils, extractOilsFromRecipes } from './oilMerger'
 import {
   validateFileSize,
+  validateJsonDepth,
+  validateJsonMimeType,
   backupPayloadV2Schema,
   type ValidationResult,
 } from './validation'
+import { sanitizeOilName } from './sanitize'
 
 export interface BackupPayloadV2 {
   version: 2
@@ -42,12 +45,24 @@ export async function previewImport(
     return { valid: false, error: sizeCheck.error }
   }
 
+  // Check MIME type / magic bytes
+  const mimeCheck = validateJsonMimeType(text)
+  if (!mimeCheck.valid) {
+    return { valid: false, error: mimeCheck.error }
+  }
+
   // Parse JSON
   let parsed: unknown
   try {
     parsed = JSON.parse(text)
   } catch {
     return { valid: false, error: 'Invalid JSON format.' }
+  }
+
+  // Check JSON depth to prevent DoS
+  const depthCheck = validateJsonDepth(parsed)
+  if (!depthCheck.valid) {
+    return { valid: false, error: depthCheck.error }
   }
 
   // Validate with Zod schema
@@ -83,17 +98,46 @@ export async function executeImport(
   // Merge all oil sources
   const mergedOils = mergeAllOils(existing, previewData.oils, recipeOils)
 
+  // Sanitize oil names before storing
+  const sanitizedOils = mergedOils.map((oil) => ({
+    ...oil,
+    name: sanitizeOilName(oil.name),
+  }))
+
+  // Sanitize recipe data
+  const sanitizedRecipes = previewData.recipes.map((recipe) => ({
+    ...recipe,
+    title: sanitizeOilName(recipe.title),
+    description: recipe.description.slice(0, 1000),
+    categories: recipe.categories.map((cat) => ({
+      ...cat,
+      name: sanitizeOilName(cat.name),
+      essentialOils: cat.essentialOils.map((eo) => ({
+        ...eo,
+        name: sanitizeOilName(eo.name),
+      })),
+    })),
+    baseOils: recipe.baseOils.map((bo) => ({
+      ...bo,
+      name: sanitizeOilName(bo.name),
+    })),
+  }))
+
   // Write to database in a transaction
   await db.transaction('rw', db.oils, db.recipes, async () => {
     await db.oils.clear()
     await db.recipes.clear()
-    await db.oils.bulkPut(mergedOils)
-    await db.recipes.bulkPut(previewData.recipes)
+
+
+    await db.oils.bulkPut(sanitizedOils)
+    await db.recipes.bulkPut(sanitizedRecipes)
   })
 
   return {
-    oilsCount: mergedOils.length,
-    recipesCount: previewData.recipes.length,
+
+
+    oilsCount: sanitizedOils.length,
+    recipesCount: sanitizedRecipes.length,
   }
 }
 

@@ -12,6 +12,72 @@ export const MAX_NAME_LENGTH = 100
 export const MAX_DROPS_PER_OIL = 10000
 export const MAX_CATEGORIES_PER_RECIPE = 50
 export const MAX_OILS_PER_CATEGORY = 200
+export const MAX_JSON_DEPTH = 15 // Maximum nesting depth for JSON objects
+export const MAX_TOTAL_ELEMENTS = 50000 // Maximum total elements across all arrays
+
+/**
+ * Validate JSON structure depth to prevent DoS attacks via deeply nested JSON.
+ */
+export function validateJsonDepth(
+  obj: unknown,
+  currentDepth = 0,
+  maxDepth = MAX_JSON_DEPTH,
+): { valid: boolean; error?: string } {
+  if (currentDepth > maxDepth) {
+    return {
+      valid: false,
+      error: `JSON structure too deeply nested (max ${maxDepth} levels)`,
+    }
+  }
+
+  if (Array.isArray(obj)) {
+    if (obj.length > MAX_TOTAL_ELEMENTS) {
+      return {
+        valid: false,
+        error: `Too many elements in array (max ${MAX_TOTAL_ELEMENTS})`,
+      }
+    }
+    for (const item of obj) {
+      const result = validateJsonDepth(item, currentDepth + 1, maxDepth)
+      if (!result.valid) return result
+    }
+  } else if (obj && typeof obj === 'object') {
+    const keys = Object.keys(obj as Record<string, unknown>)
+    if (keys.length > 1000) {
+      return {
+        valid: false,
+        error: `Too many properties in object (max 1000)`,
+      }
+    }
+    for (const key of keys) {
+      const result = validateJsonDepth(
+        (obj as Record<string, unknown>)[key],
+        currentDepth + 1,
+        maxDepth,
+      )
+      if (!result.valid) return result
+    }
+  }
+
+  return { valid: true }
+}
+
+/**
+ * Validate MIME type from file content (magic bytes check).
+ * Basic check for JSON files.
+ */
+export function validateJsonMimeType(
+  content: string,
+): { valid: boolean; error?: string } {
+  const trimmed = content.trimStart()
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    return {
+      valid: false,
+      error: 'Invalid file format. Expected JSON file.',
+    }
+  }
+  return { valid: true }
+}
 
 // ============================================================================
 // Zod Schemas
@@ -105,6 +171,12 @@ export function validateBackupV2(json: unknown): ValidationResult<{
   recipes: Recipe[]
 }> {
   try {
+    // Check JSON structure depth first
+    const depthCheck = validateJsonDepth(json)
+    if (!depthCheck.valid) {
+      return { valid: false, error: depthCheck.error }
+    }
+
     const result = backupPayloadV2Schema.safeParse(json)
     if (result.success) {
       return {
