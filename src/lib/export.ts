@@ -179,7 +179,7 @@ export async function importBackupJsonLegacy(
   }
 
   for (const raw of fileOils) {
-    const name = String((raw as { name?: string }).name ?? '').trim()
+    const name = sanitizeOilName(String((raw as { name?: string }).name ?? ''))
     if (!name) continue
     const k = name.toLowerCase()
     const lastUsedMaxPercent =
