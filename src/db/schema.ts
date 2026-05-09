@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie'
+import { sanitizeOilName } from '../lib/sanitize'
 
 /**
  * Learned library: name is unique. lastUsedMaxPercent is % of base (e.g. 1 = 1%), or null.
@@ -156,19 +157,19 @@ export function normalizeRecipeFromImport(raw: unknown): Recipe {
           : 50
     const recipe: Recipe = {
       id: typeof r.id === 'string' ? r.id : crypto.randomUUID(),
-      title: typeof r.title === 'string' ? r.title : 'New Recipe',
+      title: typeof r.title === 'string' ? sanitizeOilName(r.title) : 'New Recipe',
       description: typeof r.description === 'string' ? r.description : '',
       targetVolumeML: targetVol,
       baseOils: (r.baseOils as Recipe['baseOils']).map((b) => ({
-        name: b.name ?? '',
+        name: sanitizeOilName(b.name ?? ''),
         ratio: typeof b.ratio === 'number' ? b.ratio : 1,
       })),
       categories: (r.categories as Recipe['categories']).map((cat) => ({
         id: cat.id || crypto.randomUUID(),
-        name: typeof cat.name === 'string' ? cat.name : 'Category',
+        name: typeof cat.name === 'string' ? sanitizeOilName(cat.name) : 'Category',
         essentialOils: (cat.essentialOils ?? []).map((eo) => ({
           id: eo.id || crypto.randomUUID(),
-          name: eo.name ?? '',
+          name: sanitizeOilName(eo.name ?? ''),
           drops: typeof eo.drops === 'number' ? eo.drops : 0,
           maxPercentLimit:
             typeof eo.maxPercentLimit === 'number' ? eo.maxPercentLimit : null,
