@@ -13,6 +13,9 @@ interface State {
 
 /**
  * Error boundary component that catches React errors and displays a fallback UI.
+ *
+ * Note: This must remain a class component — React's error boundary lifecycle
+ * methods (getDerivedStateFromError, componentDidCatch) have no Hook equivalent.
  */
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
